@@ -317,17 +317,14 @@ class GaudiGenerationMixin(GenerationMixin):
 
         # 5. Prepare `input_ids` which will be used for auto-regressive generation
         if self.config.is_encoder_decoder:
-            input_ids = self._prepare_decoder_input_ids_for_generation(
-                batch_size,
+            input_ids, model_kwargs = self._prepare_decoder_input_ids_for_generation(
+                batch_size=batch_size,
+                model_input_name=model_input_name,
+                model_kwargs=model_kwargs,
                 decoder_start_token_id=generation_config.decoder_start_token_id,
                 bos_token_id=generation_config.bos_token_id,
-                model_kwargs=model_kwargs,
                 device=inputs_tensor.device,
             )
-
-            # conditional generation for multi-modal models.
-            if "input_ids" in model_kwargs and model_input_name == "pixel_values":
-                input_ids = torch.cat([input_ids, model_kwargs.pop("input_ids")], dim=-1)
         else:
             input_ids = inputs_tensor if model_input_name == "input_ids" else model_kwargs.pop("input_ids")
 
