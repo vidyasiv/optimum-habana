@@ -169,6 +169,8 @@ class ExampleTestMeta(type):
             return True
         elif "wav2vec2-large" in model_name and example_name == "run_speech_recognition_ctc":
             return True
+        elif "flan-t5-xxl" in model_name and  deepspeed:
+            return True
 
         return False
 
@@ -291,7 +293,7 @@ class ExampleTestMeta(type):
                 distribution = "multi_card"
             elif deepspeed:
                 distribution = "deepspeed"
-
+            print(distribution)
             with TemporaryDirectory() as tmp_dir:
                 cmd_line = self._create_command_line(
                     multi_card,
@@ -309,8 +311,10 @@ class ExampleTestMeta(type):
                     .get(distribution)
                     .get("extra_arguments", []),
                 )
-
-                p = subprocess.Popen(cmd_line)
+                my_env = os.environ.copy()
+                if "flan-t5-xxl" in model_name:
+                    my_env["PT_HPU_MAX_COMPOUND_OP_SIZE"] = '512'
+                p = subprocess.Popen(cmd_line, env=my_env)
                 return_code = p.wait()
 
                 # Ensure the run finished without any issue
@@ -540,12 +544,15 @@ class MultiCardSpeechRecognitionExampleTester(
 ):
     TASK_NAME = "regisss/librispeech_asr_for_optimum_habana_ci"
 
+class DeepspeedSummarizationExampleTester(
+    ExampleTesterBase, metaclass=ExampleTestMeta, example_name="run_summarization", deepspeed=True
+):
+    TASK_NAME = "cnn_dailymail"
 
 class MultiCardSummarizationExampleTester(
     ExampleTesterBase, metaclass=ExampleTestMeta, example_name="run_summarization", multi_card=True
 ):
     TASK_NAME = "cnn_dailymail"
-
 
 class MultiCardSeq2SeqQuestionAnsweringExampleTester(
     ExampleTesterBase, metaclass=ExampleTestMeta, example_name="run_seq2seq_qa", multi_card=True
