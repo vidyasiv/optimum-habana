@@ -676,10 +676,7 @@ def main():
 
     if training_args.do_train:
         train_result = trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
-
-        with training_args.main_process_first(desc="save model"):
-            if is_main_process(training_args.local_rank):
-                trainer.save_model()
+        trainer.save_model()
 
         metrics = train_result.metrics
         trainer.log_metrics("train", metrics)
