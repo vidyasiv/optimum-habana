@@ -521,6 +521,35 @@ python3 ../gaudi_spawn.py --use_deepspeed  --world_size 8  run_lora_clm.py \
   --validation_split_percentage 4
 ````
 
+- Multi-card finetuning of codegen-16B-mono:
+```bash
+python ../gaudi_spawn.py \
+    --world_size 8 --use_mpi run_lora_clm.py \
+    --model_name_or_path Salesforce/codegen-16B-mono \
+    --dataset_name b-mc2/sql-create-context \
+    --bf16 True \
+    --output_dir ./finetuned-models/codegen-finetune-on-sql-create-context-hpu8-lora8-bs4 \
+    --num_train_epochs 5 \
+    --per_device_train_batch_size 4 \
+    --per_device_eval_batch_size 4 \
+    --evaluation_strategy "no" \
+    --save_strategy "no" \
+    --learning_rate 1e-4 \
+    --logging_steps 1 \
+    --dataset_concatenation \
+    --do_train \
+    --use_habana \
+    --use_lazy_mode \
+    --throughput_warmup_steps 3 \
+    --use_hpu_graphs_for_inference \
+    --lora_target_modules "qkv_proj" \
+    --lora_rank 8 \
+    --do_eval \
+    --validation_split_percentage 10 \
+    --use_cache False \
+
+```
+
 ## Streaming
 
 To use the streaming dataset mode which can be very useful for large datasets, add `--streaming` with `--max_steps` specified in the command line. This is currently supported by `run_mlm.py` and `run_clm.py`.

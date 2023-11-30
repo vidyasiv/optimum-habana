@@ -42,7 +42,6 @@ from transformers import (
     DataCollatorForLanguageModeling,
     HfArgumentParser,
 )
-from transformers.modeling_utils import unwrap_model
 from transformers.trainer_utils import is_main_process
 
 from optimum.habana import GaudiConfig, GaudiTrainer, GaudiTrainingArguments
@@ -269,6 +268,13 @@ PROMPT_DICT = {
     ),
 }
 
+SQL_PROMPT = (
+    "You are a text-to-SQL model. Your job is to answer questions about a database. "
+    "You are given a question and a context regarding one or more tables in the database.\n\n"
+    "You must output the SQL query that answers the question. The SQL query must be between [SQL] and [/SQL] tags.\n\n"
+    "### Question: \n{question}\n\n### Context: \n{context}\n\n### Response:"
+)
+
 
 def create_prompts(examples):
     prompts = {}
@@ -281,6 +287,17 @@ def create_prompts(examples):
         source = prompt_template.format_map(example)
         prompts["source"].append(source)
         prompts["target"].append(example["output"])
+    return prompts
+
+
+def create_sql_prompts(examples):
+    prompts = {}
+    prompts["source"] = []
+    prompts["target"] = []
+    for example in examples:
+        source = SQL_PROMPT.format_map(example)
+        prompts["source"].append(source)
+        prompts["target"].append(example["answer"])
     return prompts
 
 
@@ -438,10 +455,18 @@ def main():
                 use_auth_token=True if model_args.use_auth_token else None,
                 **dataset_args,
             )
-    if data_args.dataset_name == "tatsu-lab/alpaca":
-        # Preprocessing the datasets.
         for key in raw_datasets:
-            prompts = create_prompts(raw_datasets[key])
+            # if alpaca dataset and sql dataset pass as json file, make sure they could work
+            if sorted(raw_datasets[key].features.keys()) == sorted(["input", "output", "instruction"]):
+                data_args.dataset_name = "tatsu-lab/alpaca"
+            if sorted(raw_datasets[key].features.keys()) == sorted(["question", "context", "answer"]):
+                data_args.dataset_name = "b-mc2/sql-create-context"
+
+    if data_args.dataset_name in ["tatsu-lab/alpaca", "b-mc2/sql-create-context"]:
+        # Preprocessing the datasets.
+        is_alpaca = data_args.dataset_name == "tatsu-lab/alpaca"
+        for key in raw_datasets:
+            prompts = create_prompts(raw_datasets[key]) if is_alpaca else create_sql_prompts(raw_datasets[key])
             columns_to_be_removed = list(raw_datasets[key].features.keys())
             raw_datasets[key] = raw_datasets[key].add_column("prompt_sources", prompts["source"])
             raw_datasets[key] = raw_datasets[key].add_column("prompt_targets", prompts["target"])
@@ -558,7 +583,7 @@ def main():
                 concatenated_dataset[column] = reshaped_data
             return datasets.Dataset.from_dict(concatenated_dataset)
 
-        if data_args.dataset_name == "tatsu-lab/alpaca":
+        if data_args.dataset_name in ["tatsu-lab/alpaca", "b-mc2/sql-create-context"]:
             tokenized_datasets_ = tokenized_datasets["train"].remove_columns(["prompt_sources", "prompt_targets"])
             if training_args.do_eval:
                 tokenized_datasets_eval_ = tokenized_datasets["validation"].remove_columns(
@@ -647,8 +672,7 @@ def main():
 
         with training_args.main_process_first(desc="save model"):
             if is_main_process(training_args.local_rank):
-                unwrapped_model = unwrap_model(lora_model)
-                unwrapped_model.save_pretrained(training_args.output_dir, state_dict=unwrapped_model.state_dict())
+                trainer.save_model()
 
         metrics = train_result.metrics
         trainer.log_metrics("train", metrics)
