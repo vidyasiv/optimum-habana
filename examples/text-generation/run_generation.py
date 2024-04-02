@@ -272,6 +272,9 @@ def main():
         # Benchmark over the prompts below
         if args.prompt:
             input_sentences = args.prompt
+        elif model_config.model_type == "cohere":
+            messages = [{"role": "user", "content": args.prompt}]
+            input_sentences = tokenizer.apply_chat_template(messages, tokenize=False, return_tensors="pt")
         else:
             input_sentences = [
                 "DeepSpeed is a machine learning framework",
