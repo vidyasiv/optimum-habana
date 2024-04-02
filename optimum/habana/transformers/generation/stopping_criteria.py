@@ -47,7 +47,7 @@ def gaudi_MaxNewTokensCriteria_call(self, input_ids: torch.LongTensor, scores: t
 
 
 def gaudi_StoppingCriteriaList_call(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> torch.BoolTensor:
-    # Using int since torch.full is not yet supported for bool on Synapse 1.15
+    # Using int since bool data type is not yet supported in torch.full on Synapse 1.15
     is_done = torch.full((input_ids.shape[0],), 0, device=input_ids.device).to(torch.bool)
     for criteria in self:
         is_done = is_done | criteria(input_ids, scores, **kwargs)
