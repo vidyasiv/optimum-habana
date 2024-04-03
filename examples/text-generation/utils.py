@@ -347,6 +347,7 @@ def setup_generation_config(args, model, tokenizer):
     if generation_config.reduce_recompile:
         assert generation_config.bucket_size > 0
     generation_config.use_flash_attention = args.use_flash_attention
+    generation_config.temperature = args.temperature
     return generation_config
 
 
