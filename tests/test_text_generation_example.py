@@ -58,6 +58,8 @@ if os.environ.get("GAUDI2_CI", "0") == "1":
             ("mistralai/Mistral-7B-Instruct-v0.2", 1, 120, True, 2048, 128, 1681.4401450088983),
             ("mistralai/Mistral-7B-Instruct-v0.2", 1, 44, True, 2048, 2048, 3393.149396451692),
             ("mistralai/Mixtral-8x7B-v0.1", 1, 1, True, 128, 128, 39.26845661768185),
+            ("mistralai/Mixtral-8x7B-v0.1", 2, 48, True, 2048, 2048, 1154.572),
+            ("mistralai/Mixtral-8x7B-v0.1", 2, 48, False, 2048, 2048, 1154.572),
             ("microsoft/phi-2", 1, 1, True, 128, 128, 254.08932787178165),
         ],
         "deepspeed": [
