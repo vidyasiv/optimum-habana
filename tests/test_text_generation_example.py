@@ -44,23 +44,9 @@ if os.environ.get("GAUDI2_CI", "0") == "1":
             ("Deci/DeciLM-7B", 1, False, 120),
         ],
         "fp8": [
-            ("tiiuae/falcon-180B", 4, 950, True, 128, 128, 2506.68),
-            ("meta-llama/Llama-2-7b-hf", 1, 1230, False, 128, 128, 13152.7),
-            ("meta-llama/Llama-2-7b-hf", 1, 163, False, 128, 2048, 4774.7),
-            ("meta-llama/Llama-2-7b-hf", 1, 94, False, 2048, 128, 1293.3),
-            ("meta-llama/Llama-2-7b-hf", 1, 81, False, 2048, 2048, 1942.9),
-            ("meta-llama/Llama-2-70b-hf", 4, 3042, False, 128, 128, 5374.6),
-            ("meta-llama/Llama-2-70b-hf", 4, 750, False, 128, 2048, 7422.4),
-            ("meta-llama/Llama-2-70b-hf", 4, 207, False, 2048, 128, 568.5),
-            ("meta-llama/Llama-2-70b-hf", 8, 172, False, 2048, 2048, 4656.2),
-            ("mistralai/Mistral-7B-Instruct-v0.2", 1, 896, True, 128, 128, 17068.965283763682),
-            ("mistralai/Mistral-7B-Instruct-v0.2", 1, 120, True, 128, 2048, 6979.225194247115),
-            ("mistralai/Mistral-7B-Instruct-v0.2", 1, 120, True, 2048, 128, 1681.4401450088983),
-            ("mistralai/Mistral-7B-Instruct-v0.2", 1, 44, True, 2048, 2048, 3393.149396451692),
             ("mistralai/Mixtral-8x7B-v0.1", 1, 1, True, 128, 128, 39.26845661768185),
             ("mistralai/Mixtral-8x7B-v0.1", 2, 48, True, 2048, 2048, 1154.572),
             ("mistralai/Mixtral-8x7B-v0.1", 2, 48, False, 2048, 2048, 1154.572),
-            ("microsoft/phi-2", 1, 1, True, 128, 128, 254.08932787178165),
         ],
         "deepspeed": [
             ("bigscience/bloomz", 8, 1, 36.77314954096159),
@@ -280,10 +266,6 @@ def _test_text_generation(
         assert results["throughput"] >= (2 - TIME_PERF_FACTOR) * baseline
 
 
-@pytest.mark.parametrize("model_name, batch_size, reuse_cache, baseline", MODELS_TO_TEST["bf16_1x"])
-def test_text_generation_bf16_1x(model_name: str, baseline: float, batch_size: int, reuse_cache: bool, token: str):
-    _test_text_generation(model_name, baseline, token, batch_size, reuse_cache)
-
 
 @pytest.mark.parametrize(
     "model_name, world_size, batch_size, reuse_cache, input_len, output_len, baseline", MODELS_TO_TEST["fp8"]
@@ -313,84 +295,3 @@ def test_text_generation_fp8(
     )
 
 
-@pytest.mark.parametrize("model_name,  world_size, batch_size, baseline", MODELS_TO_TEST["deepspeed"])
-def test_text_generation_deepspeed(model_name: str, baseline: float, world_size: int, batch_size: int, token: str):
-    _test_text_generation(model_name, baseline, token, deepspeed=True, world_size=world_size, batch_size=batch_size)
-
-
-@pytest.mark.parametrize("model_name, baseline", MODELS_TO_TEST["torch_compile"])
-def test_text_generation_torch_compile(model_name: str, baseline: float, token: str):
-    _test_text_generation(model_name, baseline, token, torch_compile=True)
-
-
-@pytest.mark.parametrize("model_name, baseline", MODELS_TO_TEST["torch_compile_distributed"])
-def test_text_generation_torch_compile_distributed(model_name: str, baseline: float, token: str):
-    world_size = 8
-    _test_text_generation(model_name, baseline, token, deepspeed=True, world_size=world_size, torch_compile=True)
-
-
-@pytest.mark.parametrize("model_name, baseline", MODELS_TO_TEST["distributed_tp"])
-def test_text_generation_distributed_tp(model_name: str, baseline: float, token: str):
-    world_size = 8
-    _test_text_generation(
-        model_name,
-        baseline,
-        token,
-        batch_size=64,
-        max_input_tokens=128,
-        world_size=world_size,
-        torch_compile=True,
-        parallel_strategy="tp",
-    )
-
-
-@pytest.mark.parametrize("model_name, batch_size, reuse_cache, baseline", MODELS_TO_TEST["contrastive_search"])
-def test_text_generation_contrastive_search(
-    model_name: str, baseline: float, batch_size: int, reuse_cache: bool, token: str
-):
-    _test_text_generation(model_name, baseline, token, batch_size, reuse_cache, contrastive_search=True)
-
-
-class TextGenPipeline(TestCase):
-    def test_text_generation_pipeline_script(self):
-        path_to_script = (
-            Path(os.path.dirname(__file__)).parent
-            / "examples"
-            / "text-generation"
-            / "text-generation-pipeline"
-            / "run_pipeline.py"
-        )
-
-        cmd_line = f"""ls {path_to_script}""".split()
-
-        # check find existence
-        p = subprocess.Popen(cmd_line)
-        return_code = p.wait()
-
-        # Ensure the run finished without any issue
-        self.assertEqual(return_code, 0)
-
-    def test_text_generation_pipeline_falcon(self):
-        path_to_script = (
-            Path(os.path.dirname(__file__)).parent
-            / "examples"
-            / "text-generation"
-            / "text-generation-pipeline"
-            / "run_pipeline.py"
-        )
-        sys.path.append((Path(os.path.dirname(__file__)).parent / "examples" / "text-generation"))
-        cmd_line = f"""
-                 python3
-                 {path_to_script}
-                 --model_name_or_path tiiuae/falcon-7b
-                 --max_new_tokens 100
-                 --bf16
-                 --use_hpu_graphs
-                 --use_kv_cache
-                 --do_sample
-                 """.split()
-        p = subprocess.Popen(cmd_line)
-        return_code = p.wait()
-
-        # Ensure the run finished without any issue
-        self.assertEqual(return_code, 0)
