@@ -188,6 +188,9 @@ def _test_text_generation(
             command.insert(-2, "--flash_attention_recompute")
             command.insert(-2, "--attn_softmax_bf16")
             command.insert(-2, "--trim_logits")
+        if "mixtral" in model_name:
+            command.insert(-2, "--bucket_size 128")
+            command.insert(-2, "--bucket_internal")
         elif "falcon-180b" in model_name.lower():
             command.insert(-2, "--flash_attention_recompute")
 
@@ -245,6 +248,10 @@ def _test_text_generation(
             env_variables["QUANT_CONFIG"] = os.path.join(
                 path_to_example_dir, "text-generation/quantization_config/maxabs_quant.json"
             )
+            if "mixtral" in model_name:
+                env_variables["QUANT_CONFIG"] = os.path.join(
+                    path_to_example_dir, "text-generation/quantization_config/maxabs_quant_mixtral.json"
+                )
 
         command = [x for y in command for x in re.split(pattern, y) if x]
         print(f"\n\nCommand to test: {' '.join(command[:-2])}\n")

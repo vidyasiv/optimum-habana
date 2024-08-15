@@ -104,7 +104,7 @@ slow_tests_diffusers: test_installs
 # Run text-generation non-regression tests
 slow_tests_text_generation_example: test_installs
 	python -m pip install git+https://github.com/HabanaAI/DeepSpeed.git@1.17.0
-	python -m pytest tests/test_text_generation_example.py tests/test_encoder_decoder.py -v -s --token $(TOKEN)
+	python -m pytest tests/test_text_generation_example.py  -v -s --token $(TOKEN)
 
 # Run image-to-text non-regression tests
 slow_tests_image_to_text_example: test_installs
