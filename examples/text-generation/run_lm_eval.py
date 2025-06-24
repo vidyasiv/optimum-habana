@@ -39,7 +39,10 @@ from optimum.habana.utils import HabanaGenerationTime, get_hpu_memory_stats
 
 
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
-logger = utils.eval_logger
+#logger = utils.eval_logger
+import logging
+logger = logging.getLogger(__name__)
+
 
 # This hack is a workaround to limitations of lm_eval which always allocates
 # mp.Pool with max cpu count which explodes on multinode scenarios and for hpu
@@ -262,7 +265,16 @@ def main() -> None:
 
     with HabanaGenerationTime() as timer:
         with torch.no_grad():
-            results = evaluator.simple_evaluate(lm, tasks=args.tasks, limit=args.limit_iters, log_samples=False)
+            results = evaluator.simple_evaluate(lm, 
+                                                tasks=args.tasks, 
+                                                log_samples=True, 
+                                                write_out=True,
+                                                random_seed=42,
+                                                torch_random_seed=42,
+                                                numpy_random_seed=42,
+                                                limit=1,
+                                                verbosity="DEBUG")
+                
         if args.device == "hpu":
             import habana_frameworks.torch.hpu as torch_hpu
 
